@@ -29,12 +29,12 @@ class ChessGame:
         # Custom piece paths
         # Get the directory of the current script
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        base_path = os.path.join(script_dir, 'chessPieces')  # Assuming 'chessPieces' directory
+        self.base_path = os.path.join(script_dir, 'chessPieces')  # Assuming 'chessPieces' directory
 
         # Try to load custom pieces, fallback to pygame drawing if fails
         try:
             for piece, file in piece_files.items():
-                path = os.path.join(base_path, file)
+                path = os.path.join(self.base_path, file)
                 if os.path.exists(path):
                     img = pygame.image.load(path)
                     self.pieces[piece] = pygame.transform.scale(img, (self.SQUARE_SIZE - 10, self.SQUARE_SIZE - 10))
@@ -50,13 +50,14 @@ class ChessGame:
         self.board = chess.Board()
 
         # Initialize Stockfish engine
+        self.engine = None  # Initialize engine to None
         try:
             self.engine = chess.engine.SimpleEngine.popen_uci("stockfish")
             self.engine.configure({"Skill Level": 10})  # Adjust skill level as needed
         except Exception as e:
             print(f"Error starting Stockfish: {e}")
             print("Make sure Stockfish is installed and in your PATH.")
-            sys.exit(1)
+            # Don't exit - allow human vs human play even if engine fails
 
         # Game state variables
         self.selected_square = None
@@ -66,6 +67,7 @@ class ChessGame:
         self.valid_moves = []
         self.copy_success = False
         self.copy_success_time = 0
+        self.vs_ai = True   # Default to AI mode
 
         # Colors
         self.WHITE = (255, 255, 255)
@@ -81,6 +83,8 @@ class ChessGame:
         self.BUTTON_COLOR = (70, 130, 180)  # Steel blue
         self.BUTTON_HOVER_COLOR = (100, 149, 237)  # Cornflower blue
         self.BUTTON_TEXT_COLOR = (255, 255, 255)
+        self.BUTTON_AI_COLOR = (144, 238, 144)   # LightGreen
+        self.BUTTON_HUMAN_COLOR = (255, 182, 193)  # LightPink
 
         # Font
         self.font = pygame.font.SysFont('Arial', 16)
@@ -99,6 +103,10 @@ class ChessGame:
         # Scroll button rectangles
         self.scroll_up_rect = None
         self.scroll_down_rect = None
+
+        # AI vs Human buttons
+        self.ai_button_rect = None
+        self.human_button_rect = None
 
         # Clock
         self.clock = pygame.time.Clock()
@@ -187,6 +195,59 @@ class ChessGame:
                         text_rect = text.get_rect(center=(x + self.SQUARE_SIZE // 2 - 5, y + self.SQUARE_SIZE // 2 - 5))
                         self.screen.blit(text, text_rect)
 
+    def draw_buttons(self, panel_x, panel_height, panel_y, panel_width):
+        """Draw buttons for AI vs Human and copy moves."""
+
+        # AI Button
+        ai_button_x = panel_x + 10
+        ai_button_y = panel_y + panel_height - 140
+        ai_button_width = (panel_width - 30) // 2 # Two buttons with space between
+        ai_button_height = 30
+        self.ai_button_rect = pygame.Rect(ai_button_x, ai_button_y, ai_button_width, ai_button_height)
+
+        ai_button_color = self.BUTTON_AI_COLOR if self.vs_ai else self.BUTTON_COLOR
+        pygame.draw.rect(self.screen, ai_button_color, self.ai_button_rect, border_radius=5)
+        pygame.draw.rect(self.screen, self.BLACK, self.ai_button_rect, 1, border_radius=5)
+
+        ai_text = self.button_font.render("AI", True, self.BUTTON_TEXT_COLOR)
+        ai_text_rect = ai_text.get_rect(center=self.ai_button_rect.center)
+        self.screen.blit(ai_text, ai_text_rect)
+
+        # Human Button
+        human_button_x = ai_button_x + ai_button_width + 10
+        human_button_y = ai_button_y
+        human_button_width = ai_button_width
+        human_button_height = 30
+        self.human_button_rect = pygame.Rect(human_button_x, human_button_y, human_button_width, human_button_height)
+
+        human_button_color = self.BUTTON_HUMAN_COLOR if not self.vs_ai else self.BUTTON_COLOR
+        pygame.draw.rect(self.screen, human_button_color, self.human_button_rect, border_radius=5)
+        pygame.draw.rect(self.screen, self.BLACK, self.human_button_rect, 1, border_radius=5)
+
+        human_text = self.button_font.render("Human", True, self.BUTTON_TEXT_COLOR)
+        human_text_rect = human_text.get_rect(center=self.human_button_rect.center)
+        self.screen.blit(human_text, human_text_rect)
+
+        # "Copy Moves" button
+        button_y = panel_y + panel_height - 80
+        button_width = 200
+        button_height = 30
+        button_x = panel_x + (panel_width - button_width) // 2
+
+        button_color = self.BUTTON_HOVER_COLOR if self.copy_button_hover else self.BUTTON_COLOR
+        self.copy_button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+
+        # Draw button with rounded corners
+        pygame.draw.rect(self.screen, button_color, self.copy_button_rect, border_radius=5)
+        pygame.draw.rect(self.screen, self.BLACK, self.copy_button_rect, 1, border_radius=5)
+
+        # Button text
+        button_text = self.button_font.render("Copy Moves", True, self.BUTTON_TEXT_COLOR)
+        button_text_rect = button_text.get_rect(center=self.copy_button_rect.center)
+        self.screen.blit(button_text, button_text_rect)
+
+        return button_y
+
     def draw_move_list(self):
         # Calculate positions
         panel_width = 280
@@ -217,12 +278,11 @@ class ChessGame:
             status_rect = status.get_rect(center=(panel_x + panel_width // 2, panel_y + 50))
             self.screen.blit(status, status_rect)
 
-        # Compute total move rows and max scroll
-        total_move_rows = (len(self.move_list) + 1) // 2
-        max_scroll = max(0, total_move_rows - self.max_visible_moves)
+        # Call draw_buttons and get last_y position
+        last_y = self.draw_buttons(panel_x, panel_height, panel_y, panel_width)
 
-        # Scroll buttons and scrollbar
-        if total_move_rows > self.max_visible_moves:
+        # Draw scroll buttons
+        if len(self.move_list) > self.max_visible_moves * 2:
             # Up button
             up_rect = pygame.Rect(panel_x + panel_width - 30, panel_y + 70, 20, 20)
             pygame.draw.rect(self.screen, (200, 200, 200), up_rect)
@@ -238,17 +298,9 @@ class ChessGame:
             down_arrow = self.font.render("▼", True, self.BLACK)
             self.screen.blit(down_arrow, (down_rect.centerx - 5, down_rect.centery - 7))
             self.scroll_down_rect = down_rect
-
-            # Scrollbar
-            scroll_progress_height = panel_height - 230
-            scroll_progress_rect = pygame.Rect(panel_x + panel_width - 10, panel_y + 100, 5, scroll_progress_height)
-            pygame.draw.rect(self.screen, (200, 200, 200), scroll_progress_rect)
-
-            # Thumb
-            thumb_height = max(20, scroll_progress_height * (self.max_visible_moves / total_move_rows))
-            thumb_y = panel_y + 100 + (scroll_progress_height - thumb_height) * (self.move_scroll / max_scroll)
-            thumb_rect = pygame.Rect(panel_x + panel_width - 10, thumb_y, 5, thumb_height)
-            pygame.draw.rect(self.screen, (100, 100, 100), thumb_rect)
+        else:
+            self.scroll_up_rect = None
+            self.scroll_down_rect = None
 
         # Draw move list headers
         header_y = panel_y + 70
@@ -302,39 +354,17 @@ class ChessGame:
         moves_rect = moves_surface.get_rect(center=(panel_x + panel_width // 2, panel_y + panel_height - 20))
         self.screen.blit(moves_surface, moves_rect)
 
-        # "Copy Moves" button
-        button_y = panel_y + panel_height - 80
-        button_width = 200
-        button_height = 30
-        button_x = panel_x + (panel_width - button_width) // 2
-
-        button_color = self.BUTTON_HOVER_COLOR if self.copy_button_hover else self.BUTTON_COLOR
-        self.copy_button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
-
-        # Draw button with rounded corners
-        pygame.draw.rect(self.screen, button_color, self.copy_button_rect, border_radius=5)
-        pygame.draw.rect(self.screen, self.BLACK, self.copy_button_rect, 1, border_radius=5)
-
-        # Button text
-        button_text = self.button_font.render("Copy Moves", True, self.BUTTON_TEXT_COLOR)
-        button_text_rect = button_text.get_rect(center=self.copy_button_rect.center)
-        self.screen.blit(button_text, button_text_rect)
-
         # Show copy success message if needed
         if self.copy_success and pygame.time.get_ticks() - self.copy_success_time < 2000:  # Show for 2 seconds
             success_text = self.font.render("Moves copied to clipboard!", True, (0, 128, 0))
-            success_rect = success_text.get_rect(center=(panel_x + panel_width // 2, button_y + 40))
+            success_rect = success_text.get_rect(center=(panel_x + panel_width // 2, last_y + 40))
             self.screen.blit(success_text, success_rect)
 
         # Current turn indicator
-        turn_bg = pygame.Rect(panel_x + 10, panel_y + panel_height - 40, panel_width - 20, 30)
-        pygame.draw.rect(self.screen, (220, 220, 220) if self.board.turn == chess.WHITE else (180, 180, 180), turn_bg)
-        pygame.draw.rect(self.screen, self.BLACK, turn_bg, 1)
-
-        turn_text = "Your turn (White)" if self.board.turn == chess.WHITE else "Stockfish's turn (Black)"
-        turn_surface = self.move_font.render(turn_text, True, self.BLACK)
-        turn_rect = turn_surface.get_rect(center=turn_bg.center)
-        self.screen.blit(turn_surface, turn_rect)
+        turn_text = "White's turn" if self.board.turn == chess.WHITE else "Black's turn" #added
+        turn_surface = self.font.render(turn_text, True, self.BLACK) #added
+        turn_rect = turn_surface.get_rect(center=(panel_x + panel_width // 2, panel_y + panel_height - 40)) #added
+        self.screen.blit(turn_surface, turn_rect) #added
 
         return panel_x, panel_width
 
@@ -377,7 +407,7 @@ class ChessGame:
             # Always promote to queen for simplicity (could add a dialog for options)
             move = chess.Move(from_square, to_square, promotion=chess.QUEEN)
 
-        if move in self.board.legal_moves:
+        if move in self.valid_moves:
             san = self.board.san(move)
             self.board.push(move)
             self.move_list.append(san)
@@ -389,18 +419,42 @@ class ChessGame:
         return False
 
     def make_engine_move(self):
-        result = self.engine.play(self.board, chess.engine.Limit(time=1.0))
-        san = self.board.san(result.move)
-        self.board.push(result.move)
-        self.move_list.append(san)
+        if self.engine is not None:
+            result = self.engine.play(self.board, chess.engine.Limit(time=1.0))
+            san = self.board.san(result.move)
+            self.board.push(result.move)
+            self.move_list.append(san)
 
-        # Auto-scroll to the bottom of move list
-        total_move_rows = (len(self.move_list) + 1) // 2
-        self.move_scroll = max(0, total_move_rows - self.max_visible_moves)
+            # Auto-scroll to the bottom of move list
+            total_move_rows = (len(self.move_list) + 1) // 2
+            self.move_scroll = max(0, total_move_rows - self.max_visible_moves)
 
     def handle_click(self, pos, board_offset_x, board_offset_y, panel_x, panel_width):
         total_move_rows = (len(self.move_list) + 1) // 2
         max_scroll = max(0, total_move_rows - self.max_visible_moves)
+
+        # Check if click is on the AI/Human buttons
+        if self.ai_button_rect and self.ai_button_rect.collidepoint(pos):
+            self.vs_ai = True
+            self.board.reset()    # Reset the board on mode change
+            self.move_list = []
+            self.move_scroll = 0
+            self.selected_square = None
+
+            self.player_color = chess.WHITE
+            if self.engine is None:
+                print("Stockfish engine not available")
+            return   # Important, exit as nothing else is to be done
+
+        if self.human_button_rect and self.human_button_rect.collidepoint(pos):
+            self.vs_ai = False
+            self.board.reset() # Reset the board on mode change
+            self.move_list = []
+            self.move_scroll = 0
+            self.selected_square = None
+
+            self.player_color = chess.WHITE
+            return # Important, exit as nothing else is to be done
 
         # Check if click is on the copy button
         if self.copy_button_rect and self.copy_button_rect.collidepoint(pos):
@@ -443,19 +497,24 @@ class ChessGame:
                         self.selected_square = None
                         self.valid_moves = []
 
-                        # If the game is not over, make the engine's move
-                        if not self.is_game_over():
+                        # If the game is not over, and we are playing against AI, make the engine's move
+                        if not self.is_game_over() and self.vs_ai:
                             # Add a small delay before engine move for better user experience
                             pygame.time.delay(300)
                             self.make_engine_move()
 
                             # Check if the game is over after the engine's move
                             self.is_game_over()
+                        else:
+                            # Switch player turn if it's human vs human
+                            self.player_color = not self.player_color #changed
+
                     return
 
                 # If not a valid move, select the new square if it has a piece of the player's color
                 piece = self.board.piece_at(square)
-                if piece and piece.color == self.player_color:
+                #changed
+                if piece and piece.color == self.board.turn and (self.vs_ai or self.board.turn == self.player_color):
                     self.selected_square = square
                     return
                 else:
@@ -465,7 +524,7 @@ class ChessGame:
 
             # No square selected yet, select if it has a piece of the player's color
             piece = self.board.piece_at(square)
-            if piece and piece.color == self.player_color:
+            if piece and piece.color == self.board.turn and (self.vs_ai or self.board.turn == self.player_color):
                 self.selected_square = square
 
     def is_game_over(self):
@@ -488,10 +547,7 @@ class ChessGame:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left click
-                    if not self.game_over and self.board.turn == self.player_color:
-                        self.handle_click(event.pos, *self.board_panel_info, *self.move_panel_info)
-                    elif self.copy_button_rect and self.copy_button_rect.collidepoint(event.pos):
-                        self.copy_moves_to_clipboard()
+                    self.handle_click(event.pos, *self.board_panel_info, *self.move_panel_info)
 
                 # Add mouse wheel scrolling
                 elif event.type == pygame.MOUSEWHEEL:
@@ -516,11 +572,17 @@ class ChessGame:
             # Update the display
             pygame.display.flip()
 
+            # If its AI's turn, make the AI move
+            if self.vs_ai and not self.game_over and self.board.turn != self.player_color:
+                pygame.time.delay(300)
+                self.make_engine_move()
+
             # Cap the frame rate
             self.clock.tick(60)
 
         # Quit the game and close the engine
-        self.engine.quit()
+        if self.engine:
+            self.engine.quit()
         pygame.quit()
         sys.exit()
 
