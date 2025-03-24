@@ -67,7 +67,7 @@ class ChessGame:
         self.valid_moves = []
         self.copy_success = False
         self.copy_success_time = 0
-        self.vs_ai = True   # Default to AI mode
+        self.vs_ai = True  # Default to AI mode
 
         # Colors
         self.WHITE = (255, 255, 255)
@@ -83,7 +83,7 @@ class ChessGame:
         self.BUTTON_COLOR = (70, 130, 180)  # Steel blue
         self.BUTTON_HOVER_COLOR = (100, 149, 237)  # Cornflower blue
         self.BUTTON_TEXT_COLOR = (255, 255, 255)
-        self.BUTTON_AI_COLOR = (144, 238, 144)   # LightGreen
+        self.BUTTON_AI_COLOR = (144, 238, 144)  # LightGreen
         self.BUTTON_HUMAN_COLOR = (255, 182, 193)  # LightPink
 
         # Font
@@ -195,58 +195,49 @@ class ChessGame:
                         text_rect = text.get_rect(center=(x + self.SQUARE_SIZE // 2 - 5, y + self.SQUARE_SIZE // 2 - 5))
                         self.screen.blit(text, text_rect)
 
-    def draw_buttons(self, panel_x, panel_height, panel_y, panel_width):
-        """Draw buttons for AI vs Human and copy moves."""
+    def draw_buttons(self):
+        """Draw buttons for AI vs Human and copy moves at the bottom of the screen."""
+
+        # Button dimensions and positioning
+        button_width = (self.WIDTH - 40) // 3  # Three buttons with space between
+        button_height = 40
+        button_y = self.HEIGHT - 50
 
         # AI Button
-        ai_button_x = panel_x + 10
-        ai_button_y = panel_y + panel_height - 140
-        ai_button_width = (panel_width - 30) // 2 # Two buttons with space between
-        ai_button_height = 30
-        self.ai_button_rect = pygame.Rect(ai_button_x, ai_button_y, ai_button_width, ai_button_height)
+        ai_button_x = 10
+        self.ai_button_rect = pygame.Rect(ai_button_x, button_y, button_width, button_height)
 
         ai_button_color = self.BUTTON_AI_COLOR if self.vs_ai else self.BUTTON_COLOR
         pygame.draw.rect(self.screen, ai_button_color, self.ai_button_rect, border_radius=5)
         pygame.draw.rect(self.screen, self.BLACK, self.ai_button_rect, 1, border_radius=5)
 
-        ai_text = self.button_font.render("AI", True, self.BUTTON_TEXT_COLOR)
+        ai_text = self.button_font.render("AI Mode", True, self.BUTTON_TEXT_COLOR)
         ai_text_rect = ai_text.get_rect(center=self.ai_button_rect.center)
         self.screen.blit(ai_text, ai_text_rect)
 
         # Human Button
-        human_button_x = ai_button_x + ai_button_width + 10
-        human_button_y = ai_button_y
-        human_button_width = ai_button_width
-        human_button_height = 30
-        self.human_button_rect = pygame.Rect(human_button_x, human_button_y, human_button_width, human_button_height)
+        human_button_x = ai_button_x + button_width + 10
+        self.human_button_rect = pygame.Rect(human_button_x, button_y, button_width, button_height)
 
         human_button_color = self.BUTTON_HUMAN_COLOR if not self.vs_ai else self.BUTTON_COLOR
         pygame.draw.rect(self.screen, human_button_color, self.human_button_rect, border_radius=5)
         pygame.draw.rect(self.screen, self.BLACK, self.human_button_rect, 1, border_radius=5)
 
-        human_text = self.button_font.render("Human", True, self.BUTTON_TEXT_COLOR)
+        human_text = self.button_font.render("Human Mode", True, self.BUTTON_TEXT_COLOR)
         human_text_rect = human_text.get_rect(center=self.human_button_rect.center)
         self.screen.blit(human_text, human_text_rect)
 
-        # "Copy Moves" button
-        button_y = panel_y + panel_height - 80
-        button_width = 200
-        button_height = 30
-        button_x = panel_x + (panel_width - button_width) // 2
+        # Copy Moves Button
+        copy_button_x = human_button_x + button_width + 10
+        self.copy_button_rect = pygame.Rect(copy_button_x, button_y, button_width, button_height)
 
         button_color = self.BUTTON_HOVER_COLOR if self.copy_button_hover else self.BUTTON_COLOR
-        self.copy_button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
-
-        # Draw button with rounded corners
         pygame.draw.rect(self.screen, button_color, self.copy_button_rect, border_radius=5)
         pygame.draw.rect(self.screen, self.BLACK, self.copy_button_rect, 1, border_radius=5)
 
-        # Button text
-        button_text = self.button_font.render("Copy Moves", True, self.BUTTON_TEXT_COLOR)
-        button_text_rect = button_text.get_rect(center=self.copy_button_rect.center)
-        self.screen.blit(button_text, button_text_rect)
-
-        return button_y
+        copy_text = self.button_font.render("Copy Moves", True, self.BUTTON_TEXT_COLOR)
+        copy_text_rect = copy_text.get_rect(center=self.copy_button_rect.center)
+        self.screen.blit(copy_text, copy_text_rect)
 
     def draw_move_list(self):
         # Calculate positions
@@ -277,9 +268,6 @@ class ChessGame:
             status = self.title_font.render(status_text, True, (180, 0, 0))
             status_rect = status.get_rect(center=(panel_x + panel_width // 2, panel_y + 50))
             self.screen.blit(status, status_rect)
-
-        # Call draw_buttons and get last_y position
-        last_y = self.draw_buttons(panel_x, panel_height, panel_y, panel_width)
 
         # Draw scroll buttons
         if len(self.move_list) > self.max_visible_moves * 2:
@@ -354,17 +342,11 @@ class ChessGame:
         moves_rect = moves_surface.get_rect(center=(panel_x + panel_width // 2, panel_y + panel_height - 20))
         self.screen.blit(moves_surface, moves_rect)
 
-        # Show copy success message if needed
-        if self.copy_success and pygame.time.get_ticks() - self.copy_success_time < 2000:  # Show for 2 seconds
-            success_text = self.font.render("Moves copied to clipboard!", True, (0, 128, 0))
-            success_rect = success_text.get_rect(center=(panel_x + panel_width // 2, last_y + 40))
-            self.screen.blit(success_text, success_rect)
-
         # Current turn indicator
-        turn_text = "White's turn" if self.board.turn == chess.WHITE else "Black's turn" #added
-        turn_surface = self.font.render(turn_text, True, self.BLACK) #added
-        turn_rect = turn_surface.get_rect(center=(panel_x + panel_width // 2, panel_y + panel_height - 40)) #added
-        self.screen.blit(turn_surface, turn_rect) #added
+        turn_text = "White's turn" if self.board.turn == chess.WHITE else "Black's turn"
+        turn_surface = self.font.render(turn_text, True, self.BLACK)
+        turn_rect = turn_surface.get_rect(center=(panel_x + panel_width // 2, panel_y + panel_height - 40))
+        self.screen.blit(turn_surface, turn_rect)
 
         return panel_x, panel_width
 
@@ -436,7 +418,7 @@ class ChessGame:
         # Check if click is on the AI/Human buttons
         if self.ai_button_rect and self.ai_button_rect.collidepoint(pos):
             self.vs_ai = True
-            self.board.reset()    # Reset the board on mode change
+            self.board.reset()  # Reset the board on mode change
             self.move_list = []
             self.move_scroll = 0
             self.selected_square = None
@@ -444,17 +426,17 @@ class ChessGame:
             self.player_color = chess.WHITE
             if self.engine is None:
                 print("Stockfish engine not available")
-            return   # Important, exit as nothing else is to be done
+            return  # Important, exit as nothing else is to be done
 
         if self.human_button_rect and self.human_button_rect.collidepoint(pos):
             self.vs_ai = False
-            self.board.reset() # Reset the board on mode change
+            self.board.reset()  # Reset the board on mode change
             self.move_list = []
             self.move_scroll = 0
             self.selected_square = None
 
             self.player_color = chess.WHITE
-            return # Important, exit as nothing else is to be done
+            return  # Important, exit as nothing else is to be done
 
         # Check if click is on the copy button
         if self.copy_button_rect and self.copy_button_rect.collidepoint(pos):
@@ -507,13 +489,12 @@ class ChessGame:
                             self.is_game_over()
                         else:
                             # Switch player turn if it's human vs human
-                            self.player_color = not self.player_color #changed
+                            self.player_color = not self.player_color
 
                     return
 
                 # If not a valid move, select the new square if it has a piece of the player's color
                 piece = self.board.piece_at(square)
-                #changed
                 if piece and piece.color == self.board.turn and (self.vs_ai or self.board.turn == self.player_color):
                     self.selected_square = square
                     return
@@ -568,6 +549,9 @@ class ChessGame:
 
             # Draw the move list
             self.move_panel_info = self.draw_move_list()
+
+            # Draw buttons
+            self.draw_buttons()
 
             # Update the display
             pygame.display.flip()
