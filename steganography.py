@@ -69,7 +69,7 @@ class Steganography:
                                for col in range(img.width)
                                for channel in range(3))
 
-        dataLen = len(binaryString[:32], 2)
+        dataLen = int(binaryString[:32], 2)
         dataBits = binaryString[32: 32 + (dataLen * 8)]
 
         return self.binaryToBytesHelper(dataBits)
