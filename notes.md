@@ -357,3 +357,241 @@ def getGamePositions(moves: str):
 - This script requires the `Pillow` library for image manipulation and the `python-chess` library for handling chess logic.
 
 ---
+
+```python
+# =================================================IMPORT STATEMENTS====================================================
+import chess
+import chess.pgn
+from PIL import Image, ImageDraw
+import os
+from io import StringIO
+
+from chess import PIECE_SYMBOLS
+# ======================================================================================================================
+```
+
+## Purpose of the Imports:
+1. **chess**: A Python library to represent chess boards, make moves, and work with chess positions.
+2. **chess.pgn**: Part of the chess library for parsing and creating chess games in PGN (Portable Game Notation) format.
+3. **PIL (Pillow)**:
+   - **Image**: Core module for image manipulation (creating, opening, saving, etc.).
+   - **ImageDraw**: Provides drawing capabilities to draw shapes, text, and other elements on images.
+4. **os**: Used for checking if the piece image files exist on the system.
+5. **StringIO**: Allows the chess moves string to be treated as a file, which is useful for parsing PGN data.
+
+## PIECE_IMAGES Dictionary:
+```python
+chessPieceImages = {
+    # Black pieces
+    'r': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/r.png',
+    'n': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/n.png',
+    'b': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/b.png',
+    'q': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/q.png',
+    'k': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/k.png',
+    'p': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/p.png',
+
+    # White pieces
+    'R': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/RW.png',
+    'N': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/NW.png',
+    'B': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/BW.png',
+    'Q': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/QW.png',
+    'K': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/KW.png',
+    'P': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/PW.png'
+}
+```
+
+## Purpose:
+The `chessPieceImages` dictionary maps chess piece symbols (e.g., `'r'` for black rook, `'K'` for white king) to their respective image file paths. 
+- **Important**: These paths should be converted to **relative paths** for portability.
+
+### `generateBoardImage(FEN, fileName, squareSize=50)` Function:
+
+```python
+def generateBoardImage(FEN: str, fileName: str, squareSize = 50):
+    """
+    Generates a chess board image with pieces in it
+    :param FEN: Forsyth-Edwards Notation that represents the chess board
+    example: (rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1)
+    :param fileName: name of the file where we will save the chess board image
+    :param squareSize: size in pixel of each square in the chess board
+    """
+    try:
+        board = chess.Board(FEN)
+    except ValueError:
+        board = chess.Board()
+        print(f"Invalid FEN: {FEN}, since given FEN is incorrect, we are using starting position")
+
+    img = Image.new("RGB", (8 * squareSize, 8 * squareSize))
+    imageDrawObject = ImageDraw.Draw(img)
+
+    # Draw chess board
+    for row in range(8):
+        for col in range(8):
+            if (row + col) % 2 == 0:
+                color = (240, 217, 181)
+            else:
+                color = (181, 136, 99)
+            imageDrawObject.rectangle([
+                col * squareSize,
+                row * squareSize,
+                (col + 1) * squareSize,
+                (row + 1) * squareSize
+            ], fill=color)
+
+    # Draw pieces
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if piece:
+            symbol = piece.symbol()
+            if symbol in chessPieceImages:
+                imgPath = chessPieceImages[symbol]
+                if os.path.exists(imgPath):
+                    x = chess.square_file(square) * squareSize
+                    y = (7 - chess.square_rank(square)) * squareSize
+                    try:
+                        pieceImage = Image.open(imgPath).convert("RGBA").resize((squareSize, squareSize))
+                        img.paste(pieceImage, (x, y), pieceImage)
+                    except Exception as e:
+                        print(f"Error loading {imgPath}: {str(e)}")
+                else:
+                    print(f"Missing Image: {imgPath}")
+
+    img.save(fileName)
+    print(f"Generated Board Image: {fileName}")
+```
+
+### Purpose:
+This function generates a chessboard image from a given FEN (Forsyth-Edwards Notation) string and saves the image to a file. 
+- **Arguments**:
+  - **FEN**: A string representing the chessboard position.
+  - **fileName**: The filename where the generated image will be saved.
+  - **squareSize**: The pixel size of each square on the board.
+
+### Logic:
+1. **Board Initialization**: The FEN string is parsed to initialize the chess board.
+2. **Image Creation**: A blank image of the appropriate size is created, and the chessboard is drawn.
+3. **Piece Drawing**: The pieces are drawn using their corresponding images from the `chessPieceImages` dictionary. 
+4. **Error Handling**: If a piece image cannot be loaded, it is logged as an error.
+
+### `getGamePositions(moves: str)` Function:
+
+```python
+def getGamePositions(moves: str):
+    """
+    takes a string of chess moves (in algebraic notation) and returns a list of FEN strings representing the
+    board position after each move.
+    :param moves: string of moves to be parsed
+    :return: FEN positions
+    """
+    try:
+        game = chess.pgn.read_game(StringIO(f"1. {moves}"))
+        board = game.board()
+        positions = []
+
+        for move in game.mainline_moves():
+            board.push(move)
+            positions.append(board.fen())
+
+        return positions
+    except Exception as e:
+        print(f"Error parsing moves: {str(e)}")
+        return [chess.Board().fen()]
+```
+
+### Purpose:
+This function parses a string of chess moves and returns a list of FEN strings representing the board positions after each move.
+
+### Logic:
+1. **PGN Parsing**: The string of chess moves is parsed into a PGN format.
+2. **FEN Generation**: For each move, the position of the board is updated, and the corresponding FEN is added to the list.
+3. **Error Handling**: If there is an error while parsing the moves or generating the FEN, the function returns the starting position.
+
+```
+```
+---
+
+# Steganography
+
+This Python script implements basic steganography, allowing users to hide text within an image using the least significant bit (LSB) technique. The encoded image can be shared, and the hidden message can be extracted from it.
+
+## Functions
+
+### 1. `encode_image(image_path, message, output_image_path)`
+Encodes a text message into an image and saves the result as a new image.
+
+- **Parameters:**
+  - `image_path` (str): Path to the input image file.
+  - `message` (str): Text message to encode within the image.
+  - `output_image_path` (str): Path where the encoded image will be saved.
+  
+- **Returns:**
+  - None
+  
+- **Functionality:**
+  - Opens the image and ensures the message fits within the image's pixel data.
+  - Converts the message into its binary representation and embeds it in the least significant bit of the image's pixel values.
+  - Saves the resulting image with the embedded message.
+
+### 2. `decode_image(encoded_image_path)`
+Decodes the hidden message from an encoded image.
+
+- **Parameters:**
+  - `encoded_image_path` (str): Path to the encoded image file.
+
+- **Returns:**
+  - (str): The hidden message.
+
+- **Functionality:**
+  - Opens the encoded image and extracts the least significant bits from the image's pixels.
+  - Reconstructs the message by reading the embedded binary data and converting it back to text.
+
+### 3. `text_to_bin(text)`
+Converts a text message into its binary representation.
+
+- **Parameters:**
+  - `text` (str): The text message to convert.
+
+- **Returns:**
+  - (str): The binary string representation of the text.
+
+- **Functionality:**
+  - Iterates through each character in the text and converts it to its 8-bit binary equivalent.
+
+### 4. `bin_to_text(binary_data)`
+Converts binary data back into text.
+
+- **Parameters:**
+  - `binary_data` (str): A binary string to convert back into text.
+
+- **Returns:**
+  - (str): The decoded text message.
+
+- **Functionality:**
+  - Splits the binary data into chunks of 8 bits and converts each chunk to its corresponding character.
+
+### 5. `get_image_pixels(image_path)`
+Extracts pixel data from an image.
+
+- **Parameters:**
+  - `image_path` (str): Path to the image file.
+
+- **Returns:**
+  - (list): A list of pixels in the image.
+
+- **Functionality:**
+  - Opens the image and retrieves the pixel data as a list, where each pixel is represented by its RGB (Red, Green, Blue) values.
+
+### 6. `set_image_pixels(image_path, new_pixels)`
+Sets the modified pixel data back into the image.
+
+- **Parameters:**
+  - `image_path` (str): Path to the image file.
+  - `new_pixels` (list): The new pixel data to set in the image.
+
+- **Returns:**
+  - None
+
+- **Functionality:**
+  - Opens the image and applies the new pixel data to it, saving the changes.
+
+---

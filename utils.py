@@ -84,7 +84,8 @@ def generateBoardImage(FEN: str, fileName: str, squareSize = 50):
 
 def getGamePositions(moves: str):
     """
-    Parse moves and return list of FEN positions
+    takes a string of chess moves (in algebraic notation) and returns a list of FEN strings representing the
+    board position after each move.
     :param moves: string of moves to be parsed
     :return: FEN positions
     """
