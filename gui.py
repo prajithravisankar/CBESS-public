@@ -341,13 +341,14 @@ class CBESSApplication(tk.Tk):
                 messagebox.showerror("Error", "Please enter a message to encrypt.")
                 return
 
-            # Split moves into two halves
+            # Split moves into two halves, but in summer we can change this to something more random
+            # or based on user input for more security !!!
             move_list = moves.split()
             midpoint = len(move_list) // 2
 
             # First half for encryption
             encryption_moves = " ".join(move_list[:midpoint])
-            # Second half for key embedding
+            # all the moves is for key embedding
             key_moves = moves  # Use all moves for key embedding
 
             # Store for later reference

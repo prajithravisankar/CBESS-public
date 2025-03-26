@@ -87,7 +87,7 @@ def getGamePositions(moves: str):
     takes a string of chess moves (in algebraic notation) and returns a list of FEN strings representing the
     board position after each move.
     :param moves: string of moves to be parsed
-    :return: FEN positions
+    :return: list of FEN positions
     """
     try:
         game = chess.pgn.read_game(StringIO(f"1. {moves}"))

@@ -3,12 +3,15 @@ import chess
 import chess.engine
 import sys
 import os
-import pyperclip  # For clipboard functionality
+import pyperclip
 from pygame.locals import *
 
 
 class ChessGame:
     def __init__(self):
+        '''
+        creates chess game window with board, pieces, and game controls using pygame
+        '''
         # Initialize pygame
         pygame.init()
 
@@ -112,6 +115,10 @@ class ChessGame:
         self.clock = pygame.time.Clock()
 
     def draw_board(self):
+        """
+        renders chess board and its elements in pygame window
+        :return:
+        """
         board_offset_x = 20
         board_offset_y = (self.HEIGHT - self.BOARD_SIZE) // 2
 
@@ -170,6 +177,12 @@ class ChessGame:
         return board_offset_x, board_offset_y
 
     def draw_pieces(self, board_offset_x, board_offset_y):
+        """
+        renders chess pieces in the board
+        :param board_offset_x: top left x coordinate
+        :param board_offset_y: top left y coordinate
+        :return: none
+        """
         # Draw the chess pieces on the board
         for row in range(8):
             for col in range(8):
@@ -181,7 +194,7 @@ class ChessGame:
                     y = board_offset_y + row * self.SQUARE_SIZE + 5
                     piece_symbol = piece.symbol()
 
-                    # Check if we have the image for this piece
+                    # Check if we have the image for this piece, if we do draw that piece
                     if piece_symbol in self.pieces:
                         self.screen.blit(self.pieces[piece_symbol], (x, y))
                     else:
