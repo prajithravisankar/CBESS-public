@@ -9,23 +9,27 @@ from chess import PIECE_SYMBOLS
 
 # ======================================================================================================================
 
-# change to relative paths if someone else is trying to run this program
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_path = os.path.join(script_dir, 'chessPieces')
+
+# Use relative paths to the chess piece images
 chessPieceImages = {
     # Black pieces
-    'r': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/r.png',
-    'n': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/n.png',
-    'b': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/b.png',
-    'q': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/q.png',
-    'k': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/k.png',
-    'p': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/p.png',
+    'r': os.path.join(base_path, 'r.png'),
+    'n': os.path.join(base_path, 'n.png'),
+    'b': os.path.join(base_path, 'b.png'),
+    'q': os.path.join(base_path, 'q.png'),
+    'k': os.path.join(base_path, 'k.png'),
+    'p': os.path.join(base_path, 'p.png'),
 
     # White pieces
-    'R': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/RW.png',
-    'N': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/NW.png',
-    'B': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/BW.png',
-    'Q': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/QW.png',
-    'K': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/KW.png',
-    'P': '/Users/prajithravisankar/Documents/personal/projects/python/CBESS/chessPieces/PW.png'
+    'R': os.path.join(base_path, 'RW.png'),
+    'N': os.path.join(base_path, 'NW.png'),
+    'B': os.path.join(base_path, 'BW.png'),
+    'Q': os.path.join(base_path, 'QW.png'),
+    'K': os.path.join(base_path, 'KW.png'),
+    'P': os.path.join(base_path, 'PW.png')
 }
 
 
